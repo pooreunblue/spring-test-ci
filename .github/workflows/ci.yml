@@ -55,3 +55,52 @@ jobs:
         with:
           name: gradle-test-report # 다운로드 시 표시될 이름
           path: build/reports/tests/test # gradle test HTML 보고서 경로
+
+  # 테스트 통과 시에만 이미지를 빌드해 ghcr에 올리는 작업
+  build-and-push:
+    needs: gradle-test # 테스트 작업이 성공해야만 실행됨
+    runs-on: ubuntu-latest # 빌드는 우분투 러너에서 진행
+    permissions:
+      contents: read # 소스 코드 읽기 권한
+      packages: write # ghcr 이미지 푸시 권한
+    steps:
+      # 저장소 코드를 실행 환경으로 가져옴
+      - name: Checkout source code
+        uses: actions/checkout@v4 # 공식 체크아웃 액션 사용
+
+      # arm64 등 타 아키텍처 에뮬레이션 등록
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3 # 크로스 아키텍처 실행 지원
+
+      # 멀티 플랫폼 빌드를 위한 buildx 빌더 준비
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3 # 멀티 플랫폼 빌드 엔진
+
+      # 깃허브가 내장 제공하는 토큰으로 ghcr 로그인
+      - name: Log in to GHCR
+        uses: docker/login-action@v3 # 공식 레지스트리 로그인 액션
+        with:
+          registry: ghcr.io # 깃허브 컨테이너 레지스트리 주소
+          username: ${{ github.actor }} # 워크플로우 실행 계정
+          password: ${{ secrets.GITHUB_TOKEN }} # 내장된 시크릿 토큰
+
+      # 이미지 이름과 sha/latest 태그를 자동 생성
+      - name: Extract image tags
+        id: meta
+        uses: docker/metadata-action@v5 # 태그/라벨 생성 액션
+        with:
+          images: ghcr.io/${{ github.repository }} # 리포지토리 기반 이미지명
+          # 커밋 sha 태그와 latest 태그를 함께 생성
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+
+      # amd64/arm64 동시 빌드 후 ghcr로 푸시
+      - name: Build and push image
+        uses: docker/build-push-action@v6 # 공식 빌드/푸시 액션
+        with:
+          context: . # Dockerfile 기준 경로
+          platforms: linux/amd64,linux/arm64 # 크로스 플랫폼 대상 지정
+          push: true # 빌드 후 레지스트리에 푸시
+          tags: ${{ steps.meta.outputs.tags }} # 위에서 생성한 태그 사용
+          labels: ${{ steps.meta.outputs.labels }} # 위에서 생성한 라벨 사용
