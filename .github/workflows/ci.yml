@@ -1,4 +1,4 @@
-# main 브랜치 푸시 시 동작하는 CI 워크플로우
+# main 브랜치 푸시/PR 시 동작하는 CI 워크플로우
 # Continuous Integration : 지속적 통합
 name: CI
 
@@ -9,9 +9,38 @@ on:
     # main 브랜치에서
     branches:
       - main # main 브랜치 푸시만 감지
+  # PR이 열리거나 갱신되면
+  pull_request:
+    # main 브랜치를 대상으로 하는 PR에서
+    branches:
+      - main # main 대상 PR만 감지
 
 # 어떤 작업들을 할 것인가?
 jobs:
+  # 문서/워크플로우만 바뀌었는지 판별하는 작업
+  changes:
+    runs-on: ubuntu-latest # 우분투 환경에서 실행
+    outputs:
+      code: ${{ steps.filter.outputs.code }} # 실제 코드 변경 여부
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7 # 변경 파일 비교용 이력 가져오기
+
+      # 빌드 대상 파일 변경 여부만 감지
+      - name: Detect buildable file changes
+        id: filter
+        uses: dorny/paths-filter@v3 # PR/푸시 변경 경로 필터링 액션
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'build.gradle'
+              - 'settings.gradle'
+              - 'Dockerfile'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+
   # 작업 이름
   hello:
     # 작업별로 환경변수나 다른 설정...
@@ -62,7 +91,9 @@ jobs:
 
   # 테스트 통과한 커밋만 이미지로 빌드/배포
   build:
-    needs: test # test 잡 성공 시에만 시작됨
+    needs: [test, changes] # test 성공 + 변경 감지 완료 후 시작됨
+    # PR이거나 문서/워크플로우만 바뀐 경우 빌드 생략
+    if: github.event_name == 'push' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest # 우분투 환경에서 실행
     # 패키지 write 권한 없으면 ghcr push 거부됨
     permissions:
