@@ -4,8 +4,8 @@ FROM gradle:jdk17 AS builder
 # 작업 폴더를 지정
 WORKDIR /workspace
 
-# 현재 소스 코드에서 build.gradle/setting.gradle을 카피해감
-COPY build.gradle setting.gradle ./
+# 현재 소스 코드에서 build.gradle/settings.gradle을 카피해감
+COPY build.gradle settings.gradle ./
 # 의존성을 캐싱
 RUN gradle dependencies --no-daemon || true
 
