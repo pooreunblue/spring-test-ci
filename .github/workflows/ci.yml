@@ -1,15 +1,49 @@
-# main 브랜치 푸시 시 실행되는 CI 워크플로우
+# main 브랜치 푸시 시 동작하는 CI 워크플로우
+# Continuous Integration : 지속적 통합
 name: CI
 
+# 어떤 조건에서 트리거 될 것인가?
 on:
+  # 푸시 되면
   push:
+    # main 브랜치에서
     branches:
-      - main
+      - main # main 브랜치 푸시만 감지
 
+# 어떤 작업들을 할 것인가?
 jobs:
+  # 작업 이름
   hello:
-    runs-on: ubuntu-latest
+    # 작업별로 환경변수나 다른 설정...
+    # linux나 macos 같은 os를 지정
+    runs-on: ubuntu-latest # 우분투 환경에서 실행
+    # 작업의 단계를 나눔
     steps:
-      # 실행 확인용 인사말 출력
+      # 작업의 이름
       - name: Print hello message
-        run: echo 'hello ci!'
+        # run: 직접 명령어를 통해서 실행
+        run: echo "hello ci!" # 인사 메시지 출력
+        # action : 이미 정의된 다른 작업에 설정값이나 매개변수를 제공해서 실행
+
+  # gradle 테스트 통과 여부를 검증하는 작업
+  gradle-test:
+    runs-on: ubuntu-latest # 동일하게 우분투 환경 사용
+    steps:
+      # 저장소 코드를 실행 환경으로 가져옴
+      - name: Checkout source code
+        uses: actions/checkout@v4 # 공식 체크아웃 액션 사용
+
+      # 프로젝트가 요구하는 JDK 17 설치
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4 # 공식 자바 세팅 액션 사용
+        with:
+          java-version: '17' # JDK 17 버전 지정
+          distribution: 'temurin' # 무료 오픈소스 배포판
+
+      # gradlew 스크립트에 실행 권한 부여
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew # 실행 권한이 없으면 실패함
+
+      # 단위/통합 테스트 전체 실행
+      - name: Run gradle test
+        run: ./gradlew test # 실패 시 워크플로우도 실패 처리
