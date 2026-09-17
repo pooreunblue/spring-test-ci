@@ -47,3 +47,11 @@ jobs:
       # 단위/통합 테스트 전체 실행
       - name: Run gradle test
         run: ./gradlew test # 실패 시 워크플로우도 실패 처리
+
+      # 테스트 실패해도 보고서를 받기 위한 업로드
+      - name: Upload test HTML report
+        if: always() # 실패한 경우에도 이 단계 실행
+        uses: actions/upload-artifact@v4 # 공식 아티팩트 업로드 액션
+        with:
+          name: gradle-test-report # 다운로드 시 표시될 이름
+          path: build/reports/tests/test # gradle test HTML 보고서 경로
