@@ -1,0 +1,15 @@
+# main 브랜치 푸시 시 실행되는 CI 워크플로우
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      # 실행 확인용 인사말 출력
+      - name: Print hello message
+        run: echo 'hello ci!'
